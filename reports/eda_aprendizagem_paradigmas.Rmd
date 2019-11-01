@@ -1,0 +1,228 @@
+---
+title: "Análise exploratória de aprendizagem de paradigmas"
+output: html_notebook
+---
+
+```{r setup, message=FALSE, warning=FALSE}
+#library(tidyverse)
+library(here)
+# library(ggplot2)
+library(readr)
+library(stringr)
+library(dplyr)
+
+# library(tibble)
+library(plotly)
+```
+
+```{r, message=FALSE}
+# Leitura dos dados
+dados_plp <- read_csv("../data/plp-modificada.csv") %>% 
+  rename(cod_atividade = atividade)
+atv_paradigmas <- read_csv("../data/atv_paradigms.csv") %>% 
+  rename(cod_atividade = codigo_atv)
+```
+
+```{r, message=FALSE}
+# Tratamento dos dados
+
+# Filtrar os horários de submissões para apenas dias dos laboratórios
+dados_plp <- dados_plp %>%
+  filter(str_sub(horario_submissao, start = 12, end = 13) >= 18) %>%
+  filter(str_sub(horario_submissao, start = 12, end = 13) < 20)
+
+#Classificar testes como corretos
+dados_plp["correta"] <- !str_detect(dados_plp$testes, pattern = "f+")
+```
+
+```{r, message=FALSE}
+submissoes_atv <- dados_plp %>% group_by(cod_atividade) %>% count(cod_atividade)
+
+teste_attv <- dados_plp %>%
+  group_by(cod_atividade) %>% count(correta)
+
+acertos_atividade <- teste_attv %>%
+  filter(correta == TRUE)
+  
+erros_atividade <- teste_attv %>%
+  filter(correta == FALSE) 
+
+dados_atividade <- merge(x=acertos_atividade, y=erros_atividade[,c("cod_atividade", "n")], by = "cod_atividade", suffix = c("_acertos", "_erros"), all.x = TRUE)
+dados_atividade <- merge(x=dados_atividade, y=submissoes_atv, by = "cod_atividade", all.x = TRUE) %>% 
+  mutate(coeficiente = n_acertos/n) %>% 
+  select(-correta)
+
+```
+
+
+```{r}
+# Existe 3 questões (Prolog A) no período 2017.2 que não tiveram nenhuma submissão, esse código foi adicionado para ser possível fazer o join entre as colunas.
+#TODO: Deve deixar essas questões ?
+#jabuti
+dados_faltantes <- tibble(
+  cod_atividade = c("SkxZnd5iC", "SNv2YRKj2", "NXSmnt0fw"),
+  n_acertos = c(0, 0, 0),
+  n_erros = c(0, 0, 0),
+  n = c(0, 0, 0),
+  coeficiente = c(0, 0, 0))
+
+atividades <- bind_rows(dados_atividade, dados_faltantes)
+```
+
+##1 Atividades
+
+Inicialmente, a análise mais básica a ser feito fazer é sobre as atividades como as mesmas se comportam, a seguir podemos visualizar três gráficos contendo:
+
+###1.1 Quantidade de submissões
+
+```{r}
+dados_atividade %>% 
+  ggplot(aes(x = cod_atividade,
+             y = n)) +
+  geom_jitter() +
+  labs(title = "Distribuição de submissões por atividade",
+       x = "Atividade",
+       y= "Quantidade de submissões")
+
+```
+
+
+Com esse gráfico podemos determinar
+
+###1.2 Quantidade de acertos
+
+```{r}
+dados_atividade %>% 
+  ggplot(aes(x = cod_atividade,
+             y = n_acertos)) +
+  geom_jitter() +
+  labs(title = "Distribuição de acertos por atividade",
+       x = "Atividade",
+       y= "Quantidade de acertos")
+
+```
+
+###1.3 Coeficientes
+
+```{r}
+dados_atividade %>% 
+  ggplot(aes(x = cod_atividade,
+             y = n)) +
+  geom_jitter() +
+  labs(title = "Distribuição de coeficiente por atividade",
+       x = "Atividade",
+       y= "Coeficiente")
+
+```
+
+###2. Relação entre atividades e paradigmas
+
+Tendo em vista que todas as atividades estão relacionados aos paradigmas, podemos ver se o comportamento está relacionado paradigma.
+
+Para uma melhor visualização será utilizado um gráfico dispersão, o qual no eixo x apresenta cada atividade e y a métrica a ser analisada(quantidade de acertos ou erros e o coeficiente), utilizamos as cores dos pontos para representar qual paradigma exercitado pela atividade.
+###2.1 Quantidade de submissões
+
+```{r}
+atividades_paradigmas %>% 
+  ggplot(aes(x = cod_atividade,
+             y = n,
+             color = paradigma)) +
+  geom_jitter() +
+  labs(title = "Distribuição de acertos por atividade",
+       x = "Atividade",
+       y= "Quantidade de acertos")
+
+```
+
+###2.1 Quantidade de acertos
+
+```{r}
+atividades_paradigmas %>% 
+  ggplot(aes(x = cod_atividade,
+             y = n_acertos,
+             color = paradigma)) +
+  geom_jitter() +
+  labs(title = "Distribuição de acertos por atividade",
+       x = "Atividade",
+       y= "Quantidade de acertos")
+
+```
+
+###2.2 Quantidade de erros
+
+```{r}
+atividades_paradigmas %>% 
+  ggplot(aes(x = cod_atividade,
+             y = n_erros,
+             color = paradigma)) +
+  geom_jitter() +
+  labs(title = "Distribuição de erros por atividade",
+       x = "Atividade",
+       y= "Quantidade de erros")
+
+```
+
+###2.3 Coeficientes
+```{r}
+atividades_paradigmas %>% 
+  ggplot(aes(x = cod_atividade,
+             y = coeficiente,
+             color = paradigma)) +
+  geom_jitter() +
+  labs(title = "Distribuição de coeficiente por atividade",
+       x = "Atividade",
+       y= "Coeficiente")
+
+```
+
+
+```{r}
+p <- ggplot(atividades_paradigmas, aes(x=x) ) +
+  # Top
+  geom_col( aes(x = cod_atividade, y = (n_acertos)), fill="#69b3a2" ) +
+  #geom_label( aes(x=5, y=85, label="nº de acertos"), color="#69b3a2") +
+  # Bottom
+  geom_col( aes(x = cod_atividade, y = -(n_erros)), fill= "#404080") +
+  #geom_label( aes(x=5, y=-200, label="nº de erros"), color="#404080") +
+  xlab("Atividades")
+
+ggplotly(p)
+```
+
+
+## Laboratório
+
+Tendo em vista que todas as questões estão associadas à um paradigma, conseguimos definir o comportamento dos mesmos.
+
+```{r}
+atividades_paradigmas <- inner_join(atividades, atv_paradigmas, by = "cod_atividade")
+
+atividades_paradigmas %>% 
+  group_by(laboratorio) %>% 
+  ggplot(aes(x = laboratorio,
+             y = coeficiente)) +
+  geom_col()
+
+```
+
+
+## Paradigma
+```{r}
+p <- atividades_paradigmas %>% 
+  ggplot(aes(x = paradigma,
+             y = coeficiente)) +
+  geom_boxplot() +
+  geom_point()
+
+ggplotly(p)
+```
+
+## Período
+
+```{r}
+atividades_paradigmas %>% 
+  group_by(periodo) %>% 
+  ggplot(aes(x = periodo,
+             y = coeficiente)) +
+  geom_col()
+```

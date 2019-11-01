@@ -1,0 +1,121 @@
+---
+title: "TCC"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library("ggplot2")
+library("dplyr")
+library("tidyr")
+library("readr")
+library("stringr")
+library("plotly")
+
+dados = read_csv("plp.csv")
+
+dados <- dados %>%
+  filter(str_sub(horario_submissao, start = 12, end=13) >= 18)%>%
+  filter(str_sub(horario_submissao, start = 12, end=13) < 20)
+
+dados["correta"] <- !str_detect(dados$testes, pattern = "f+")
+
+```
+
+## Dados que associam atividade e aluno
+
+```{r}
+
+atividade_alunos <- dados %>%
+  group_by(atividade, aluno) %>% 
+  count(aluno)
+
+testes_alunosatv <- dados %>%
+  group_by(aluno, atividade) %>% 
+  count(correta)
+
+```
+
+## Dados sobre atividade
+
+```{r}
+submissoes_atv <- dados %>% group_by(atividade) %>% count(atividade)
+
+teste_attv <- dados %>%
+  group_by(atividade) %>% 
+  count(correta)
+
+acertos_atividade <- teste_attv %>%
+  filter(correta == TRUE)
+  
+erros_atividade <- teste_attv %>%
+  filter(correta == FALSE) 
+
+dados_atividade <- merge(x=acertos_atividade, y=erros_atividade[,c("atividade", "n")], by = "atividade", suffix = c("_acertos", "_erros"), all.x = TRUE)
+dados_atividade <- merge(x=dados_atividade, y=submissoes_atv, by = "atividade", all.x = TRUE)
+
+dados_atividade <- dados_atividade %>%
+  mutate(coeficiente = n_acertos/n)
+
+```
+
+
+## Dados sobre o aluno
+
+```{r}
+testes_alunos <- dados %>%
+  group_by(aluno) %>% 
+  count(correta)
+
+acertos <-testes_alunos %>%
+  filter(correta == TRUE)
+  
+erros <- testes_alunos %>%
+  filter(correta == FALSE)
+
+submissoes_aluno <- dados %>% group_by(aluno) %>% count(aluno)
+
+## Juntando as tabelas
+dados_aluno <- merge(x=acertos, y=erros[ , c("aluno", "n")], by = "aluno",suffix = c("_acertos", "_erros"), all.x = TRUE)
+dados_aluno <- merge(x=dados_aluno, y=submissoes_aluno, by = "aluno", all.x = TRUE)
+
+dados_aluno <- dados_aluno %>%
+  mutate(coeficiente = n_acertos/n)
+
+```
+
+
+## Gráficos
+
+### Histograma para alunos
+
+* Acertos
+* Erros
+* Coeficiente - (Acertos) / (Acertos + Erros)
+
+## Aluno
+
+```{r}
+
+plot_ly(x = dados_aluno$coeficiente,
+        type = "histogram",
+        name="Aluno x Coeficiente")
+plot_ly(x = dados_aluno$n_acertos,
+        type = "histogram",
+        name="Aluno x Acertos")
+plot_ly(x = dados_aluno$n_erros,
+        type = "histogram",
+        name="Aluno x Erros")
+
+```
+ 
+## Atividade
+
+```{r}
+plot_ly(x = dados_atividade$coeficiente, type = "histogram")
+plot_ly(x = dados_atividade$n_acertos, type = "histogram")
+plot_ly(x = dados_atividade$n_erros, type = "histogram")
+
+```
+
+## Dados por cursos
+
