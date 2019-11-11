@@ -1,35 +1,37 @@
 ---
 title: "Análise exploratória de aprendizagem de paradigmas"
-output: html_notebook
+output:
+  html_document:
+    df_print: paged
 ---
 
 ```{r setup, message=FALSE, warning=FALSE}
-#library(tidyverse)
-library(here)
-# library(ggplot2)
 library(readr)
 library(stringr)
 library(dplyr)
-
-# library(tibble)
 library(plotly)
 ```
 
 ```{r, message=FALSE}
 # Leitura dos dados
-dados_plp <- read_csv("../data/plp-modificada.csv") %>% 
+dados_plp <- read_csv("../data/plp_modificada.csv") %>% 
   rename(cod_atividade = atividade)
 atv_paradigmas <- read_csv("../data/atv_paradigms.csv") %>% 
   rename(cod_atividade = codigo_atv)
+atv_aluno_duracao  <- read_csv("../data/atv_aluno_duracao.csv")
 ```
 
 ```{r, message=FALSE}
 # Tratamento dos dados
-
 # Filtrar os horários de submissões para apenas dias dos laboratórios
 dados_plp <- dados_plp %>%
   filter(str_sub(horario_submissao, start = 12, end = 13) >= 18) %>%
-  filter(str_sub(horario_submissao, start = 12, end = 13) < 20)
+  filter(str_sub(horario_submissao, start = 12, end = 13) < 21) %>%
+  filter(str_sub(horario_submissao, start = 0, end = 10) %in% c(
+    "2017-06-27", "2017-10-27", "2017-11-24", "2017-12-01", "2018-02-09", "2018-05-11", "2018-06-15", "2018-06-22", "2018-07-13", "2018-07-20", "2018-09-14", "2018-10-05", "2018-10-19", "2018-11-09", "2018-11-23", "2019-04-05", "2019-05-03", "2019-05-10", "2019-06-07", "2019-06-21")) %>%
+  filter(!aluno %in% (
+    "everton@computacao.ufcg.edu.br"
+  ))
 
 #Classificar testes como corretos
 dados_plp["correta"] <- !str_detect(dados_plp$testes, pattern = "f+")
@@ -52,91 +54,71 @@ dados_atividade <- merge(x=dados_atividade, y=submissoes_atv, by = "cod_atividad
   mutate(coeficiente = n_acertos/n) %>% 
   select(-correta)
 
-```
-
-
-```{r}
-# Existe 3 questões (Prolog A) no período 2017.2 que não tiveram nenhuma submissão, esse código foi adicionado para ser possível fazer o join entre as colunas.
-#TODO: Deve deixar essas questões ?
-#jabuti
-dados_faltantes <- tibble(
-  cod_atividade = c("SkxZnd5iC", "SNv2YRKj2", "NXSmnt0fw"),
-  n_acertos = c(0, 0, 0),
-  n_erros = c(0, 0, 0),
-  n = c(0, 0, 0),
-  coeficiente = c(0, 0, 0))
-
-atividades <- bind_rows(dados_atividade, dados_faltantes)
-```
-
-##1 Atividades
-
-Inicialmente, a análise mais básica a ser feito fazer é sobre as atividades como as mesmas se comportam, a seguir podemos visualizar três gráficos contendo:
-
-###1.1 Quantidade de submissões
-
-```{r}
-dados_atividade %>% 
-  ggplot(aes(x = cod_atividade,
-             y = n)) +
-  geom_jitter() +
-  labs(title = "Distribuição de submissões por atividade",
-       x = "Atividade",
-       y= "Quantidade de submissões")
+atividades_paradigmas <- inner_join(dados_atividade, atv_paradigmas, by = "cod_atividade")
 
 ```
 
-
-Com esse gráfico podemos determinar
-
-###1.2 Quantidade de acertos
-
-```{r}
-dados_atividade %>% 
-  ggplot(aes(x = cod_atividade,
-             y = n_acertos)) +
-  geom_jitter() +
-  labs(title = "Distribuição de acertos por atividade",
-       x = "Atividade",
-       y= "Quantidade de acertos")
-
-```
-
-###1.3 Coeficientes
-
-```{r}
-dados_atividade %>% 
-  ggplot(aes(x = cod_atividade,
-             y = n)) +
-  geom_jitter() +
-  labs(title = "Distribuição de coeficiente por atividade",
-       x = "Atividade",
-       y= "Coeficiente")
-
-```
-
-###2. Relação entre atividades e paradigmas
+### 1. Relação entre atividades e paradigmas
 
 Tendo em vista que todas as atividades estão relacionados aos paradigmas, podemos ver se o comportamento está relacionado paradigma.
 
 Para uma melhor visualização será utilizado um gráfico dispersão, o qual no eixo x apresenta cada atividade e y a métrica a ser analisada(quantidade de acertos ou erros e o coeficiente), utilizamos as cores dos pontos para representar qual paradigma exercitado pela atividade.
-###2.1 Quantidade de submissões
+
+### 1.1 Quantidade de submissões
 
 ```{r}
+#TODO: Adicionar legendas e títulos
+plot_ly(x = atividades_paradigmas$n,
+        type = "histogram",
+        name="Submissões x Acertos")
+
+#TODO: REMOVER A LEGENDA DE ATIVIDADES.
 atividades_paradigmas %>% 
   ggplot(aes(x = cod_atividade,
              y = n,
              color = paradigma)) +
   geom_jitter() +
-  labs(title = "Distribuição de acertos por atividade",
+  labs(title = "Distribuição de submissões por atividade",
        x = "Atividade",
-       y= "Quantidade de acertos")
-
+       y= "Quantidade de submissões")
 ```
 
-###2.1 Quantidade de acertos
+Com o histograma conseguimos uma visualização que indica a quantidade de atividades (eixo y) que apresentaram o valor x de submissões. Dessa forma, é possível definir intervalos e comportamentos.
+
+* Atípico 1: abaixo de 50 submissões
+* Típico: 50 à 119 submissões
+* Atípico 2: acima de 119 submissões - Existem 9 casos
+
+O segundo gráfico proporciona a visualização com o paradigma, dessa forma podemos determinar quais os paradigmas das questões para as classes:
+
+#### Atípicas do tipo 1:
+* 3 casos, com 0 submissões. (Laboratório PrologA no período 2017.2)
+
+#### Atípicas do tipo 2:
+* 1 questão de haskell
+(PtgBJ0pQO	61	206	267	0.2284644	Haskell	2017.2	HaskellA)
+* 4 questões de prolog
+(
+QEDoVk8tE	69	133	202	0.3415842	Prolog	2017.2	PrologB
+StYJaP03k	75	97	172	0.4360465	Prolog	2018.2	PrologA
+RuvTx3uKG	72	80	152	0.4736842	Prolog	2018.2	PrologB
+RYIhBbemO2	82	48	130	0.6307692	Prolog	2018.1	PrologB
+)
+* 4 questões de C
+(
+U0VYCbVQW	42	121	163	0.2576687	C	2018.1	C
+MgUDVyxCy	53	73	126	0.4206349	C	2018.2	C
+UqBk7Iogi	41	84	125	0.3280000	C	2018.2	C
+U61k02zZY	53	68	121	0.4380165	C	2017.2	C
+)
+
+### 1.2 Quantidade de acertos
 
 ```{r}
+plot_ly(x = atividades_paradigmas$n_acertos,
+        type = "histogram",
+        name="Atividade x Acertos")
+
 atividades_paradigmas %>% 
   ggplot(aes(x = cod_atividade,
              y = n_acertos,
@@ -148,22 +130,12 @@ atividades_paradigmas %>%
 
 ```
 
-###2.2 Quantidade de erros
-
+### 1.3 Coeficientes
 ```{r}
-atividades_paradigmas %>% 
-  ggplot(aes(x = cod_atividade,
-             y = n_erros,
-             color = paradigma)) +
-  geom_jitter() +
-  labs(title = "Distribuição de erros por atividade",
-       x = "Atividade",
-       y= "Quantidade de erros")
+plot_ly(x = atividades_paradigmas$coeficiente,
+        type = "histogram",
+        name="Coeficiente x Atividade")
 
-```
-
-###2.3 Coeficientes
-```{r}
 atividades_paradigmas %>% 
   ggplot(aes(x = cod_atividade,
              y = coeficiente,
@@ -175,6 +147,42 @@ atividades_paradigmas %>%
 
 ```
 
+ORDENAR POR SUBMISSAO
+(não é possível ordernar por submissão, já que aqui ele verifica informações sobre a atividade e não por cada submissão em específico).
+
+Com o histograma conseguimos uma visualização que indica a quantidade de atividades (eixo y) que apresentaram o valor x de coeficiente. Dessa forma, é possível definir intervalos e comportamentos.
+
+* Atípico 1: abaixo de 0.35 - Existem 4 casos (7 com os labs com 0 submissões)
+* Típico: 0.35 entre 0.85
+* Atípico 2: acima de 0.85 - Existem 4 casos
+
+O segundo gráfico proporciona a visualização com o paradigma, dessa forma podemos determinar quais os paradigmas das questões para as classes:
+
+#### Atípicas do tipo 1:
+* 5 casos, com 0 submissões. (Laboratório PrologA no período 2017.2)
+(
+PvlPfDNp2	11	94	105	0.1047619	Prolog	2018.1	PrologB
+PtgBJ0pQO	61	206	267	0.2284644	Haskell	2017.2	HaskellA
+U0VYCbVQW	42	121	163	0.2576687	C	2018.1	C
+UqBk7Iogi	41	84	125	0.3280000	C	2018.2	C
+QEDoVk8tE	69	133	202	0.3415842	Prolog	2017.2	PrologB
+)
+
+#### Atípicas do tipo 2:
+* 4 questões de haskell
+(
+SWdTuSnEO	35	1	36	0.9722222	Haskell	2018.2	HaskellA
+PYHdqJCqm	43	3	46	0.9347826	Haskell	2018.1	HaskellA
+Rby1sBQg4	40	3	43	0.9302326	Haskell	2019.1	HaskellA
+PwBB0JTiS	71	7	78	0.9102564	Haskell	2018.2	HaskellB
+)
+
+Para o caso das atípicas, o coeficiente foi elevado porque a quantidade total de submissões são baixas.
+
+
+#### Comparativos de acertos e erros
+
+O gráfico a seguir nos faz ter um comparativo de acertos e erros por questão, percebemos que no geral a quantidade de acertos é maior do que a de erros, em alguns casos específicos a taxa de erro é bastante significativa.
 
 ```{r}
 p <- ggplot(atividades_paradigmas, aes(x=x) ) +
@@ -192,37 +200,306 @@ ggplotly(p)
 
 ## Laboratório
 
-Tendo em vista que todas as questões estão associadas à um paradigma, conseguimos definir o comportamento dos mesmos.
-
+### 1.1 Quantidade de submissões por laboratório
 ```{r}
-atividades_paradigmas <- inner_join(atividades, atv_paradigmas, by = "cod_atividade")
-
 atividades_paradigmas %>% 
   group_by(laboratorio) %>% 
   ggplot(aes(x = laboratorio,
-             y = coeficiente)) +
+             y = n)) +
+  ylab("Submissões") +
+  ggtitle("Submissões por Laboratório", subtitle = waiver()) +
   geom_col()
+```
+
+O laboratório com maior quantidade de submissões é o de Prolog Básico, seguido pelo laboratório de C.
+
+
+### 1.2 Quantidade de corretas por laboratório
+```{r}
+atividades_paradigmas %>% 
+  group_by(laboratorio) %>% 
+  ggplot(aes(x = laboratorio,
+             y = n_acertos)) +
+  ylab("Acertos") +
+  ggtitle("Acertos por Laboratório", subtitle = waiver()) +
+  geom_col()
+```
+
+
+#### Boxplot laboratório
+```{r}
+p <- atividades_paradigmas %>% 
+    group_by(laboratorio) %>% 
+    ggplot(aes(x = laboratorio,
+               y = n)) +
+    geom_boxplot() +
+    ggtitle("Boxplot com submissao por laboratorio", subtitle = waiver()) +
+    geom_point()
+
+ggplotly(p)
+
+p <- atividades_paradigmas %>% 
+  group_by(laboratorio) %>% 
+  ggplot(aes(x = laboratorio,
+             y = coeficiente)) +
+  geom_boxplot() +
+  ggtitle("Boxplot com coeficiente por laboratorio", subtitle = waiver()) +
+  geom_point()
+
+ggplotly(p)
+
+lab <-atividades_paradigmas %>% 
+  group_by(laboratorio) 
+```
+
+### 1.3 Coeficiente por laboratório
+```{r}
+atividades_paradigmas %>% 
+  group_by(laboratorio) %>% 
+  ggplot(aes(x = laboratorio,
+             y = coeficiente,
+             color = laboratorio)) +
+  geom_jitter() +
+  labs(title = "Distribuição de coeficiente por laboratório",
+       x = "Laboratório",
+       y= "Coeficiente")
 
 ```
 
 
+Em relação ao laboratório podemos ver que existe uma maior quantidade de submissões para os labs com maior quantidade possuem um coeficiente baixo, podemos entender que para esses laboratórios são necessárias várias submissões para conseguir resultados corretos.
+
+OBS: C possue bastante submissões, provavelmente por ser o primeiro laboratório estão se adaptando ao ambiente, como também é um paradigma com apenas 1 laboratório então, deveria ter menos submissões ?
+
+
+
 ## Paradigma
+
+### 1.1 Quantidade de submissões por paradigma
 ```{r}
+atividades_paradigmas %>% 
+  group_by(paradigma) %>% 
+  ggplot(aes(x = paradigma,
+             y = n)) +
+  ylab("Submissões") +
+  ggtitle("Submissões por paradigma", subtitle = waiver()) +
+  geom_col()
+```
+
+O paradigma com maior quantidade de submissões é o de Prolog. 
+
+
+### 1.2 Quantidade de acertos por paradigma
+```{r}
+atividades_paradigmas %>% 
+  group_by(paradigma) %>% 
+  ggplot(aes(x = paradigma,
+             y = n_acertos)) +
+  ylab("Numero de acertos") +
+  ggtitle("Acertos por paradigma", subtitle = waiver()) +
+  geom_col()
+```
+
+### 1.3 Coeficiente por paradigma
+```{r}
+atividades_paradigmas %>% 
+  group_by(paradigma) %>% 
+  ggplot(aes(x = paradigma,
+             y = coeficiente)) +
+  ylab("Coeficiente") +
+  ggtitle("Coeficiente por paradigma", subtitle = waiver()) +
+  geom_col()
+```
+
+#### Boxplot paradigma
+```{r}
+p <- atividades_paradigmas %>% 
+  ggplot(aes(x = paradigma,
+             y = n)) +
+  geom_boxplot() +
+  ggtitle("Boxplot com submissao por paradigma", subtitle = waiver()) +
+  geom_point()
+  #geom_jitter()
+
+ggplotly(p)
+
 p <- atividades_paradigmas %>% 
   ggplot(aes(x = paradigma,
              y = coeficiente)) +
   geom_boxplot() +
+  ggtitle("Boxplot com coeficiente por paradigma", subtitle = waiver()) +
   geom_point()
+  #geom_jitter()
 
 ggplotly(p)
 ```
 
-## Período
+
+Mesmo sendo o paradimga Prolog com o maior número de submissões.
+
+### Verificar normalidade dos dados
+
+ho: dados possuem distribuição normal
+ha: dados não possuem distribuição normal
+
+"Dessa forma, quando o teste resulta em um “p” menor que 0,05, isto quer dizer que os dados não possuem distribuição normal. Da mesma forma, valores de “p” maiores que 0,05 indicam que os dados apresentam a distribuição normal."
 
 ```{r}
-atividades_paradigmas %>% 
-  group_by(periodo) %>% 
-  ggplot(aes(x = periodo,
-             y = coeficiente)) +
-  geom_col()
+shapiro.test(atividades_paradigmas$n)
+shapiro.test(atividades_paradigmas$n_acertos)
+shapiro.test(atividades_paradigmas$coeficiente)
 ```
+
+Observando a métrica de shapiro, podemos determinar que apenas os dados atividade x n_acertos são normalizados, sendo assim poderemos aplicar os testes.
+
+### Teste ttest
+
+Com o resultado do teste de shapiro podemos definir que o coeficiente apresenta distribuição normal dos dados.
+
+"O teste t de Student ou somente teste t é um teste de hipótese que usa conceitos estatísticos para rejeitar ou não uma hipótese nula quando a estatística de teste t segue uma distribuição t de Student.
+
+Essa premissa é normalmente usada quando a estatística de teste, na verdade, segue uma distribuição normal, mas a variância da população sigma2 é desconhecida. Nesse caso, é usada a variância amostral s^2 e, com esse ajuste, a estatística de teste passa a seguir uma distribuição t de Student."
+
+
+h0: 
+
+
+
+```{r}
+atividades_paradigmas$paradigma[atividades_paradigmas$paradigma == 'Procedural'] <- 0
+atividades_paradigmas$paradigma[atividades_paradigmas$paradigma == 'Funcional'] <- 1
+atividades_paradigmas$paradigma[atividades_paradigmas$paradigma == 'Lógico'] <- 2
+
+t.test(atividades_paradigmas$n, as.numeric(atividades_paradigmas$paradigma))
+t.test(atividades_paradigmas$coeficiente, as.numeric(atividades_paradigmas$paradigma))
+
+atividades_paradigmas$paradigma[atividades_paradigmas$paradigma == 0] <- 'Procedural'
+atividades_paradigmas$paradigma[atividades_paradigmas$paradigma == 1] <- 'Funcional'
+atividades_paradigmas$paradigma[atividades_paradigmas$paradigma == 2] <- 'Lógico'
+```
+
+
+
+
+
+
+
+### Teste Kruskal-Wallis
+
+"É um teste não paramétrico utilizado para comparar três ou mais populações. Ele é usado para testar a hipótese nula de que todas as populações possuem funções de distribuição iguais contra a hipótese alternativa de que ao menos duas das populações possuem funções de distribuição diferentes.
+
+1. Estabelecemos as hipótese
+  
+2. Ordenamos de forma crescente de magnitude os valores deste novo conjunto de dados e associamos a cada valor seu posto correspondente, tendo cada posto o mesmo sinal do valor que este representa.
+
+3. Calculamos o valor da estatística H. Em seguida, fixamos o nível de significância α.
+
+4. Encontramos os valores críticos referentes ao nível de significância fixado. Neste caso, calculamos os valores Qα  de modo que P[H > Qα ] = α (sob $ H_0 $).
+
+5. Se Hobs > Qα rejeitamos a hipótese nula de que as amostras provém de populações igualmente distribuídas.
+
+http://www.portalaction.com.br/tecnicas-nao-parametricas/teste-de-kruskal-wallis
+
+Os dados não apresentam distribuição normal, para avaliá-los utilizei o Teste de Kruskal-Wallis 
+
+* Ho = Não há diferença na função de distribuição das amostras
+* H1 = Não são todas iguais
+
+```{r}
+kruskal.test(atividades_paradigmas$n, as.factor(atividades_paradigmas$paradigma))
+kruskal.test(atividades_paradigmas$n_acertos, as.factor(atividades_paradigmas$paradigma))
+kruskal.test(atividades_paradigmas$coeficiente, as.factor(atividades_paradigmas$paradigma))
+
+```
+
+
+Tendo em vista que todos os p-valores foram inferiores à 0.5 não podemos recusar a hipótese 0, e temos que os dados possuem diferença na função de distribuição, uma vez analisada esse ponto, vamos verificar se entre os paradigmas os mesmos possuem funções de distribuição diferentes.
+
+
+### Par a par
+
+```{r}
+procedural <- atividades_paradigmas %>%
+                filter(paradigma %in% c("Procedural"))
+logico <- atividades_paradigmas %>%
+                filter(paradigma %in% c("Lógico"))
+funcional <- atividades_paradigmas %>%
+                filter(paradigma %in% c("Funcional"))
+```
+
+
+Em estatística o teste U de Mann-Whitney (também conhecido por teste da soma dos postos de Wilcoxon, teste de Wilcoxon-Mann-Whitney ou teste de Mann-Whitney)[1] É um teste não paramétrico aplicado para duas amostras independentes. É de fato a versão da rotina de teste não-paramétrico de t de Student.
+
+Primeiro, notamos que o valor-p é um pouco menor que 0,05. Com base nesse resultado, podemos concluir que as medianas dessas duas distribuições diferem. A hipótese alternativa é declarada como "a verdadeira mudança de local não é igual a 0". Essa é outra maneira de dizer "a distribuição de uma população é deslocada para a esquerda ou direita da outra", o que implica medianas diferentes.
+
+
+
+
+#### Procedural e Funcional
+
+
+```{r}
+wilcox.test(procedural$n, funcional$n)
+wilcox.test(procedural$n_acertos, funcional$n_acertos)
+wilcox.test(procedural$coeficiente, funcional$coeficiente)
+
+```
+
+
+
+
+#### Procedural e Lógico
+
+
+```{r}
+
+wilcox.test(procedural$n, logico$n)
+wilcox.test(procedural$n_acertos, logico$n_acertos)
+wilcox.test(procedural$coeficiente, logico$coeficiente)
+```
+
+#### Funcional e Lógico
+
+
+```{r}
+
+wilcox.test(funcional$n, logico$n)
+wilcox.test(funcional$n_acertos, logico$n_acertos)
+wilcox.test(funcional$coeficiente, logico$coeficiente)
+
+```
+
+
+Em todos os casos o p-valor para a análise de coeficiente foi inferior a 0.05 sendo assim podemos rejeitar a Ho de que possuem a mesma mediana.
+
+
+###  Tempo por atividades por alunos
+
+```{r}
+alunos_atividades <- dados_plp %>%
+  group_by(cod_atividade, aluno) %>%
+  count(cod_atividade)
+
+teste_atv_alunos <- dados_plp %>%
+  group_by(cod_atividade, aluno) %>% count(correta)
+
+acertos_atividade_aluno <- teste_atv_alunos %>%
+  filter(correta == TRUE)
+  
+erros_atividade_aluno <- teste_atv_alunos %>%
+  filter(correta == FALSE) 
+
+dados_atividade_alunos <- merge(
+  x=acertos_atividade_aluno,
+  y=erros_atividade_aluno[,c("cod_atividade", "n")],
+  by = "cod_atividade",
+  suffix = c("_acertos", "_erros"),
+  all.x = TRUE
+)
+#dados_atividade_alunos <- merge(
+#  x=dados_atividade_alunos,
+#  y=submissoes_atv, by = "cod_atividade", all.x = TRUE) %>% 
+#  mutate(coeficiente = n_acertos/n) %>% 
+#  select(-correta)
+```
+

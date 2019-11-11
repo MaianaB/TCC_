@@ -117,5 +117,63 @@ plot_ly(x = dados_atividade$n_erros, type = "histogram")
 
 ```
 
-## Dados por cursos
+=============================== TCC SEGUNDO RMD
 
+##1 Atividades
+
+Inicialmente, a análise mais básica a ser feito fazer é sobre as atividades como as mesmas se comportam, a seguir podemos visualizar três gráficos contendo:
+
+### 1.1 Quantidade de submissões
+
+```{r}
+
+
+#dados_atividade %>% 
+#  ggplot(aes(x = cod_atividade,
+#             y = n)) +
+#  geom_jitter() +
+#  labs(title = "Distribuição de submissões por atividade",
+#       x = "Atividade",
+#       y= "Quantidade de submissões")
+
+```
+
+# Acertos por submissões/alunos
+
+Com esse gráfico podemos determinar
+
+### 1.2 Quantidade de acertos
+
+```{r}
+#dados_atividade %>% 
+#  ggplot(aes(x = cod_atividade,
+#             y = n_acertos)) +
+#  geom_jitter() +
+#  labs(title = "Distribuição de acertos por atividade",
+#       x = "Atividade",
+#       y= "Quantidade de acertos")
+
+```
+
+### 1.3 Coeficientes
+
+```{r}
+#dados_atividade %>% 
+#  ggplot(aes(x = cod_atividade,
+#             y = n)) +
+#  geom_jitter() +
+#  labs(title = "Distribuição de coeficiente por atividade",
+#       x = "Atividade",
+#       y= "Coeficiente")
+
+```
+
+## Período
+
+```{r}
+atividades_paradigmas %>% 
+  group_by(periodo) %>% 
+  ggplot(aes(x = periodo,
+             y = coeficiente)) +
+  geom_col()
+```
