@@ -3,10 +3,7 @@ const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 
 (async()=>{
     let saida = {};
-    /*{
-        'aluno':
-        {'tarefa': tempo_medio}
-    }*/
+    let obj_csv = [];
     let file = await csv().fromFile('./plp-modificada.csv');
     let paradigmas = await csv().fromFile('./atv_paradigms.csv');
     let datas = [ "2017-06-27", "2017-10-27", "2017-11-24", "2017-12-01", "2018-02-09", "2018-05-11", "2018-06-15", "2018-06-22", "2018-07-13", "2018-07-20", "2018-09-14", "2018-10-05", "2018-10-19", "2018-11-09", "2018-11-23", "2019-04-05", "2019-05-03", "2019-05-10", "2019-06-07", "2019-06-21"];
@@ -19,9 +16,6 @@ const createCsvWriter = require('csv-writer').createObjectCsvWriter;
         return inicio && fim && eAluno && dataAplicacao;
     })
 
-    //let cod_atividade = 'QKcOCkxgO';
-    //let aluno = 'gabriel.maracaja@ccc.ufcg.edu.br';
-
     for(let i=0; i< file.length; i++){
         let cod_atividade = file[i].atividade;
         let aluno = file[i].aluno;
@@ -29,6 +23,8 @@ const createCsvWriter = require('csv-writer').createObjectCsvWriter;
         if(saida[aluno]){
             let att = saida[aluno][cod_atividade];
             if(att) continue;
+        } else{
+            saida[aluno]= {};
         }
 
         let atividades = file.filter((row)=>{
@@ -43,8 +39,9 @@ const createCsvWriter = require('csv-writer').createObjectCsvWriter;
         paradigma = paradigma[0];
 
         duracao = getDuracao(atividades);
+        duracao = (duracao !== 0) ? (duracao/1000) : 0;
 
-        saida[aluno]= {
+        let data = {
             "atividade" :  cod_atividade,
             "duracao": duracao,
             "aluno": aluno,
@@ -52,10 +49,11 @@ const createCsvWriter = require('csv-writer').createObjectCsvWriter;
             "laboratorio": paradigma.laboratorio,
             "periodo": paradigma.periodo
         }
+        saida[aluno][cod_atividade] = data
+        obj_csv.push(data)
     }
 
-    saida = Object.values(saida);
-    writeCSV(saida);
+    writeCSV(obj_csv);
 
     function getDuracao(atividades){
         atividades.sort(function(a,b) {

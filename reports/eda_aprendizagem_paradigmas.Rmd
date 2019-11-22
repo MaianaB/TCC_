@@ -57,6 +57,49 @@ dados_atividade <- merge(x=dados_atividade, y=submissoes_atv, by = "cod_atividad
 atividades_paradigmas <- inner_join(dados_atividade, atv_paradigmas, by = "cod_atividade")
 
 ```
+### Sumário dos dados
+
+```{r}
+alunos20172 <- atv_aluno_duracao %>% filter(periodo=="2017.2") %>% group_by(aluno) %>% summarise(n())
+alunos20181 <- atv_aluno_duracao %>% filter(periodo=="2018.1") %>% group_by(aluno) %>% summarise(n())
+alunos20182 <- atv_aluno_duracao %>% filter(periodo=="2018.2") %>% group_by(aluno) %>% summarise(n())
+alunos20191 <- atv_aluno_duracao %>% filter(periodo=="2019.1") %>% group_by(aluno) %>% summarise(n())
+
+tarefas20172 <- atividades_paradigmas %>% filter(periodo=="2017.2")
+tarefas20181 <- atividades_paradigmas %>% filter(periodo=="2018.1")
+tarefas20182 <- atividades_paradigmas %>% filter(periodo=="2018.2")
+tarefas20191 <- atividades_paradigmas %>% filter(periodo=="2019.1")
+
+df <- data.frame(
+  "período" = c("2017.2", "2018.1", "2018.2", "2019.1"),
+  "n_alunos"= c(nrow(alunos20172), nrow(alunos20181), nrow(alunos20182), nrow(alunos20191)),
+  "n_atividades"= c(13, 14, 15, 15),
+  "n_submissoes"=c(sum(tarefas20172$n), sum(tarefas20181$n), sum(tarefas20182$n), sum(tarefas20191$n)),
+  "n_acertos"=c(sum(tarefas20172$n_acertos), sum(tarefas20181$n_acertos), sum(tarefas20182$n_acertos), sum(tarefas20191$n_acertos)),
+  "n_erros"=c(sum(tarefas20172$n_erros), sum(tarefas20181$n_erros), sum(tarefas20182$n_erros), sum(tarefas20191$n_erros))
+  )
+df
+
+```
+
+```{r}
+imp <- atividades_paradigmas %>% filter(paradigma=="Procedural")
+func <- atividades_paradigmas %>% filter(paradigma=="Funcional")
+log <- atividades_paradigmas %>% filter(paradigma=="Lógico")
+
+par <- data.frame(
+  "paradigma" = c("Imperativo", "Funcional", "Lógico"),
+  "n_atividades"= c(nrow(imp), nrow(func), nrow(log)),
+  "n_submissoes"=c(sum(imp$n), sum(func$n), sum(log$n)),
+  "n_acertos"=c(sum(imp$n_acertos), sum(func$n_acertos), sum(log$n_acertos)),
+  "n_erros"=c(sum(imp$n_erros), sum(func$n_erros), sum(log$n_erros))
+  )
+par
+
+```
+
+
+
 
 ### 1. Relação entre atividades e paradigmas
 
@@ -272,11 +315,81 @@ Em relação ao laboratório podemos ver que existe uma maior quantidade de subm
 OBS: C possue bastante submissões, provavelmente por ser o primeiro laboratório estão se adaptando ao ambiente, como também é um paradigma com apenas 1 laboratório então, deveria ter menos submissões ?
 
 
+### Teste estatístico
+
+```{r}
+
+kruskal.test(atividades_paradigmas$n, as.factor(atividades_paradigmas$laboratorio))
+
+c <- atividades_paradigmas %>%
+                filter(laboratorio %in% c("C"))
+haskellba <- atividades_paradigmas %>%
+                filter(laboratorio %in% c("HaskellBasico"))
+haskellav <- atividades_paradigmas %>%
+                filter(laboratorio %in% c("HaskellAvancado"))
+prologba <- atividades_paradigmas %>%
+                filter(laboratorio %in% c("PrologBasico"))
+prologav <- atividades_paradigmas %>%
+                filter(laboratorio %in% c("PrologAvancado"))
+
+#wilcox.test(c$n, haskellav$n)
+#wilcox.test(c$n, haskellba$n)
+#wilcox.test(c$n, prologav$n)
+#wilcox.test(c$n, prologba$n)
+
+
+#wilcox.test(haskellav$n, prologav$n)
+#wilcox.test(haskellba$n, prologav$n)
+#wilcox.test(prologba$n, prologav$n)
+
+#wilcox.test(haskellav$n, prologba$n)
+#wilcox.test(haskellba$n, prologba$n)
+
+#wilcox.test(haskellav$n, haskellba$n)
+```
+
+
+coeficientes
+
+
+```{r}
+
+atividades_paradigmas$laboratorio[atividades_paradigmas$laboratorio == 'C'] <- 0
+atividades_paradigmas$laboratorio[atividades_paradigmas$laboratorio == 'HaskellBasico'] <- 1
+atividades_paradigmas$laboratorio[atividades_paradigmas$laboratorio == 'HaskellAvancado'] <- 2
+atividades_paradigmas$laboratorio[atividades_paradigmas$laboratorio == 'PrologBasico'] <- 3
+atividades_paradigmas$laboratorio[atividades_paradigmas$laboratorio == 'PrologAvancado'] <- 4
+
+t.test(atividades_paradigmas$coeficiente, as.numeric(atividades_paradigmas$laboratorio))
+
+atividades_paradigmas$laboratorio[atividades_paradigmas$laboratorio == 0] <- 'C'
+atividades_paradigmas$laboratorio[atividades_paradigmas$laboratorio == 1] <- 'HaskellBasico'
+atividades_paradigmas$laboratorio[atividades_paradigmas$laboratorio == 2] <- 'HaskellAvancado'
+atividades_paradigmas$laboratorio[atividades_paradigmas$laboratorio == 3] <- 'PrologBasico'
+atividades_paradigmas$laboratorio[atividades_paradigmas$laboratorio == 4] <- 'PrologAvancado'
+
+t.test(c$coeficiente, haskellav$coeficiente)
+t.test(c$coeficiente, haskellba$coeficiente)
+t.test(c$coeficiente, prologav$coeficiente)
+t.test(c$coeficiente, prologba$coeficiente)
+
+
+t.test(haskellav$coeficiente, prologav$coeficiente)
+t.test(haskellba$coeficiente, prologav$coeficiente)
+t.test(prologba$coeficiente, prologav$coeficiente)
+
+t.test(haskellav$coeficiente, prologba$coeficiente)
+t.test(haskellba$coeficiente, prologba$coeficiente)
+
+t.test(haskellav$coeficiente, haskellba$coeficiente)
+```
+
 
 ## Paradigma
 
 ### 1.1 Quantidade de submissões por paradigma
 ```{r}
+atividades_paradigmas$paradigma[atividades_paradigmas$paradigma == 'Procedural'] <- 'Imperativo'
 atividades_paradigmas %>% 
   group_by(paradigma) %>% 
   ggplot(aes(x = paradigma,
@@ -284,6 +397,22 @@ atividades_paradigmas %>%
   ylab("Submissões") +
   ggtitle("Submissões por paradigma", subtitle = waiver()) +
   geom_col()
+
+
+
+sub <- atividades_paradigmas %>% 
+  group_by(paradigma) %>% 
+  summarise(submissao = sum(n))
+sub$fraction = sub$submissao / sum(sub$submissao)
+sub$ymax = cumsum(sub$fraction)
+sub$ymin = c(0, head(sub$ymax, n=-1))
+
+
+sub
+ggplot(sub, aes(ymax=ymax, ymin=ymin, xmax=4, xmin=3, fill=paradigma)) +
+     geom_rect() +
+     coord_polar(theta="y") + # Try to remove that to understand how the chart is built initially
+     xlim(c(2, 4)) # Try to remove that to see how to make a pie chart
 ```
 
 O paradigma com maior quantidade de submissões é o de Prolog. 
@@ -291,6 +420,8 @@ O paradigma com maior quantidade de submissões é o de Prolog.
 
 ### 1.2 Quantidade de acertos por paradigma
 ```{r}
+atividades_paradigmas$paradigma[atividades_paradigmas$paradigma == 'Procedural'] <- 'Imperativo'
+
 atividades_paradigmas %>% 
   group_by(paradigma) %>% 
   ggplot(aes(x = paradigma,
@@ -313,6 +444,8 @@ atividades_paradigmas %>%
 
 #### Boxplot paradigma
 ```{r}
+atividades_paradigmas$paradigma[atividades_paradigmas$paradigma == 'Procedural'] <- 'Imperativo'
+
 p <- atividades_paradigmas %>% 
   ggplot(aes(x = paradigma,
              y = n)) +
@@ -352,7 +485,7 @@ shapiro.test(atividades_paradigmas$coeficiente)
 
 Observando a métrica de shapiro, podemos determinar que apenas os dados atividade x n_acertos são normalizados, sendo assim poderemos aplicar os testes.
 
-### Teste ttest
+### Ttest
 
 Com o resultado do teste de shapiro podemos definir que o coeficiente apresenta distribuição normal dos dados.
 
@@ -370,15 +503,12 @@ atividades_paradigmas$paradigma[atividades_paradigmas$paradigma == 'Procedural']
 atividades_paradigmas$paradigma[atividades_paradigmas$paradigma == 'Funcional'] <- 1
 atividades_paradigmas$paradigma[atividades_paradigmas$paradigma == 'Lógico'] <- 2
 
-t.test(atividades_paradigmas$n, as.numeric(atividades_paradigmas$paradigma))
 t.test(atividades_paradigmas$coeficiente, as.numeric(atividades_paradigmas$paradigma))
 
 atividades_paradigmas$paradigma[atividades_paradigmas$paradigma == 0] <- 'Procedural'
 atividades_paradigmas$paradigma[atividades_paradigmas$paradigma == 1] <- 'Funcional'
 atividades_paradigmas$paradigma[atividades_paradigmas$paradigma == 2] <- 'Lógico'
 ```
-
-
 
 
 
@@ -407,9 +537,6 @@ Os dados não apresentam distribuição normal, para avaliá-los utilizei o Test
 
 ```{r}
 kruskal.test(atividades_paradigmas$n, as.factor(atividades_paradigmas$paradigma))
-kruskal.test(atividades_paradigmas$n_acertos, as.factor(atividades_paradigmas$paradigma))
-kruskal.test(atividades_paradigmas$coeficiente, as.factor(atividades_paradigmas$paradigma))
-
 ```
 
 
@@ -420,7 +547,7 @@ Tendo em vista que todos os p-valores foram inferiores à 0.5 não podemos recus
 
 ```{r}
 procedural <- atividades_paradigmas %>%
-                filter(paradigma %in% c("Procedural"))
+                filter(paradigma %in% c("Imperativo"))
 logico <- atividades_paradigmas %>%
                 filter(paradigma %in% c("Lógico"))
 funcional <- atividades_paradigmas %>%
@@ -439,67 +566,112 @@ Primeiro, notamos que o valor-p é um pouco menor que 0,05. Com base nesse resul
 
 
 ```{r}
-wilcox.test(procedural$n, funcional$n)
-wilcox.test(procedural$n_acertos, funcional$n_acertos)
-wilcox.test(procedural$coeficiente, funcional$coeficiente)
-
-```
-
-
-
+t.test(procedural$coeficiente, funcional$coeficiente)
 
 #### Procedural e Lógico
-
-
-```{r}
-
-wilcox.test(procedural$n, logico$n)
-wilcox.test(procedural$n_acertos, logico$n_acertos)
-wilcox.test(procedural$coeficiente, logico$coeficiente)
-```
+t.test(procedural$coeficiente, logico$coeficiente)
 
 #### Funcional e Lógico
-
-
-```{r}
-
-wilcox.test(funcional$n, logico$n)
-wilcox.test(funcional$n_acertos, logico$n_acertos)
-wilcox.test(funcional$coeficiente, logico$coeficiente)
-
+t.test(funcional$coeficiente, logico$coeficiente)
 ```
 
 
 Em todos os casos o p-valor para a análise de coeficiente foi inferior a 0.05 sendo assim podemos rejeitar a Ho de que possuem a mesma mediana.
 
 
-###  Tempo por atividades por alunos
+###  Tempo em milissegundos por atividades por alunos
 
 ```{r}
-alunos_atividades <- dados_plp %>%
-  group_by(cod_atividade, aluno) %>%
-  count(cod_atividade)
+atv_aluno_duracao$paradigma[atv_aluno_duracao$paradigma == 'Procedural'] <- 'Imperativo'
 
-teste_atv_alunos <- dados_plp %>%
-  group_by(cod_atividade, aluno) %>% count(correta)
+atv_aluno_duracao %>% 
+  ggplot(aes(x = cod_atividade,
+             y = duracao,
+             color = paradigma)) +
+  geom_jitter() +
+  labs(title = "Distribuição de duração por atividade",
+       x = "Atividade",
+       y= "Duração")
 
-acertos_atividade_aluno <- teste_atv_alunos %>%
-  filter(correta == TRUE)
-  
-erros_atividade_aluno <- teste_atv_alunos %>%
-  filter(correta == FALSE) 
+t <- atv_aluno_duracao %>% 
+  ggplot(aes(x = paradigma,
+             y = duracao)) +
+  geom_boxplot() +
+  ggtitle("Boxplot com duração por paradigma", subtitle = waiver()) +
+  geom_point()
+  #geom_jitter()
 
-dados_atividade_alunos <- merge(
-  x=acertos_atividade_aluno,
-  y=erros_atividade_aluno[,c("cod_atividade", "n")],
-  by = "cod_atividade",
-  suffix = c("_acertos", "_erros"),
-  all.x = TRUE
-)
-#dados_atividade_alunos <- merge(
-#  x=dados_atividade_alunos,
-#  y=submissoes_atv, by = "cod_atividade", all.x = TRUE) %>% 
-#  mutate(coeficiente = n_acertos/n) %>% 
-#  select(-correta)
+ggplotly(t)
 ```
 
+### Teste estatístico
+
+```{r}
+shapiro.test(atv_aluno_duracao$duracao)
+kruskal.test(atv_aluno_duracao$duracao, as.factor(atv_aluno_duracao$paradigma))
+
+imperativo <- atv_aluno_duracao %>%
+                filter(paradigma %in% c("Imperativo"))
+logico <- atv_aluno_duracao %>%
+                filter(paradigma %in% c("Lógico"))
+funcional <- atv_aluno_duracao %>%
+                filter(paradigma %in% c("Funcional"))
+
+wilcox.test(imperativo$duracao, funcional$duracao)
+wilcox.test(imperativo$duracao, logico$duracao)
+wilcox.test(logico$duracao, funcional$duracao)
+```
+
+
+###  Tempo agrupado por laboratório
+
+```{r}
+atv_aluno_duracao %>% 
+  ggplot(aes(x = cod_atividade,
+             y = duracao,
+             color = laboratorio)) +
+  geom_jitter() +
+  labs(title = "Distribuição de duração por laboratório",
+       x = "Atividade",
+       y= "Duração")
+
+t <- atv_aluno_duracao %>% 
+  ggplot(aes(x = laboratorio,
+             y = duracao)) +
+  geom_boxplot() +
+  ggtitle("Boxplot com duração por laboratório", subtitle = waiver()) +
+  geom_point()
+  #geom_jitter()
+
+ggplotly(t)
+
+
+
+kruskal.test(atv_aluno_duracao$duracao, as.factor(atv_aluno_duracao$laboratorio))
+
+c <- atv_aluno_duracao %>%
+                filter(laboratorio %in% c("C"))
+haskellba <- atv_aluno_duracao %>%
+                filter(laboratorio %in% c("HaskellBasico"))
+haskellav <- atv_aluno_duracao %>%
+                filter(laboratorio %in% c("HaskellAvancado"))
+prologba <- atv_aluno_duracao %>%
+                filter(laboratorio %in% c("PrologBasico"))
+prologav <- atv_aluno_duracao %>%
+                filter(laboratorio %in% c("PrologAvancado"))
+
+wilcox.test(c$duracao, haskellav$duracao)
+wilcox.test(c$duracao, haskellba$duracao)
+wilcox.test(c$duracao, prologav$duracao)
+wilcox.test(c$duracao, prologba$duracao)
+
+
+wilcox.test(haskellav$duracao, prologav$duracao)
+wilcox.test(haskellba$duracao, prologav$duracao)
+wilcox.test(prologba$duracao, prologav$duracao)
+
+wilcox.test(haskellav$duracao, prologba$duracao)
+wilcox.test(haskellba$duracao, prologba$duracao)
+
+wilcox.test(haskellav$duracao, haskellba$duracao)
+```
